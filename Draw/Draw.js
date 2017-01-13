@@ -3,6 +3,7 @@ var clickY = [];
 var clickDrag = [];
 var canvasWidth = 800;
 var canvasHeight = 350;
+var color = '#'+Math.random().toString(16).substr(-6);
 var paint;
 var canvas;
 var context;
@@ -74,7 +75,7 @@ function redraw()
 	clearCanvas();
 	
 	var radius = 5;
-	context.strokeStyle = "#df4b26";
+	context.strokeStyle = color;
 	context.lineJoin = "round";
 	context.lineWidth = radius;
 			
