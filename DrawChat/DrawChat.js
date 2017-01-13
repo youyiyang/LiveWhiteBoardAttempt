@@ -8,11 +8,13 @@ var color = '#'+Math.random().toString(16).substr(-6);
 var paint;
 var canvas;
 var context;
-var drawCounter = 0;
-var emitCounter = 0;
 var base = 'http://clicktime.herokuapp.com:80/rooms/';
 var roomName = 'zachroom';  
 var socket = io.connect(base + roomName);
+var tempX = [];
+var tempY = [];
+var tempDrag = [];
+var tempColor = [];
 
 /**
  * These are the events that the websocket server will emit
@@ -21,24 +23,29 @@ var socket = io.connect(base + roomName);
  * (e.g. socket.emit('message', { ... }); )
  */
 socket.on('welcome', function () {
-
-
    
 });
 
 socket.on('message', function (data) {
    
-    clickX = clickX.concat(data.xData);
-    clickY = clickY.concat(data.yData);
-    clickDrag = clickDrag.concat(data.dragData);
-    colorLog = colorLog.concat(data.colorData);
+    tempX = tempX.concat(data.xData);
+    tempY = tempY.concat(data.yData);
+    tempDrag = tempDrag.concat(data.dragData);
+    tempColor = tempColor.concat(data.colorData);
+    
+    redraw(tempX, tempY, tempDrag, tempColor, 0);
+    
+    tempX = [];
+    tempY = [];
+    tempDrag = [];
+    tempColor = [];
+ 
     
 });
 
 
 
 socket.on('heartbeat', function () {
-   socket.emit('drawing', {xData: clickX, yData: clickY, dragData: clickDrag});
   
 });
 
@@ -66,6 +73,7 @@ function prepareCanvas()
         clickX = [];
         clickY = [];
         clickDrag = [];
+        colorLog = [];
     });
     
 	canvas.addEventListener("mousedown", function(e)
@@ -78,29 +86,37 @@ function prepareCanvas()
 		paint = true;
 		addClick(mouseX, mouseY, false);
      
-		redraw();
+		redraw(clickX, clickY, clickDrag, colorLog);
+        emit();
+
       
 	});
 	
 	canvas.addEventListener("mousemove", function(e){
 		if(paint){
 			addClick(e.pageX - this.offsetLeft, e.pageY - this.offsetTop, true);
-			redraw();
+			redraw(clickX, clickY, clickDrag, colorLog);
+            emit();
 		}
 	});
 	
 	canvas.addEventListener("mouseup", function(e){
 		paint = false;
-	  	redraw();
+	  	redraw(clickX, clickY, clickDrag, colorLog);
+        emit();
+        
+        clickX = [];
+        clickY = [];
+        clickDrag = [];
+        colorLog = [];
+        
+        
+        
 	});
 	
   canvas.addEventListener("mouseleave", function(e){
 		paint = false;
 	});
-    
-  canvas.addEventListener("mouseover", function(e) {
-        
-  });
 	
 }	
 
@@ -115,51 +131,43 @@ function addClick(x, y, dragging)
 function clearCanvas()
 {
 	context.clearRect(0, 0, canvasWidth, canvasHeight);
-    drawCounter = 0;
-    emitCounter = 0;
-    clickX = [];
-    clickY = [];
-    clickDrag = [];
-    colorLog = [];
     
 }
 
 
-function nEmit(ray) {
-    var testy = [];
-    for (var i = emitCounter; i < ray.length; i++) {
-        testy.push(ray[i]);
-    }
-    return testy;
-}
 
-function redraw()
+function redraw(x, y, drag, hue)
 {	
 	var radius = 3;
 	
 	context.lineJoin = "round";
 	context.lineWidth = radius;
     
-    socket.emit('message', {xData: nEmit(clickX), yData: nEmit(clickY), dragData: nEmit(clickDrag), colorData: nEmit(colorLog)});
-    emitCounter = clickX.length;
 			
-	for(var i = drawCounter; i < clickX.length; i++)
+	for(var i = 0; i < x.length + 1; i++)
 	{		
-        context.strokeStyle = colorLog[i];
+        context.strokeStyle = hue[i];
 		context.beginPath();
-		if(clickDrag[i]){
-			context.moveTo(clickX[i-1], clickY[i-1]);
+		if(drag[i]){
+			context.moveTo(x[i-1], y[i-1]);
 		}else{
-			context.moveTo(clickX[i]-1, clickY[i]);
+			context.moveTo(x[i]-1, y[i]);
 		}
-		context.lineTo(clickX[i], clickY[i]);
+		context.lineTo(x[i], y[i]);
        
 		context.closePath();
 		context.stroke();
-        drawCounter = clickX.length;
+        
 	}
-   
+    
+    
    
 }
+
+function emit() {
+    socket.emit('message', {xData: clickX, yData: clickY, dragData: clickDrag, colorData: colorLog});
+} 
+   
+
 
 prepareCanvas();
